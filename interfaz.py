@@ -9,22 +9,12 @@ from db import conectar
 from mysql.connector import Error
 
 BASE_DIR = os.path.dirname(__file__)
-LOGO_PATH = os.path.join(BASE_DIR, "assets", "images", "logo.png")
-
-ventana = tk.Tk()
-# ---- logo ----
-logo_img = Image.open(LOGO_PATH)
-logo_img = logo_img.resize((120, 120), Image.LANCZOS)
-logo = ImageTk.PhotoImage(logo_img)
-
+LOGO_PATH = os.path.join(BASE_DIR, "assets", "icons", "logo.png")
 
 COLOR_BG = "#AFEEEE"
 COLOR_HEADER = "#003366"
 COLOR_TEXT = "#1F0954"
 CARD_BG = "#E8F8F8"
-
-
-# ------------------------ CONSULTAS A LA BD ------------------------
 
 def fetch_clients():
     conn = conectar()
@@ -158,37 +148,6 @@ def fetch_invoices(filter_cliente=None):
     conn.close()
     return rows
 
-
-# ------------------------ INTERFAZ GRÁFICA ------------------------
-
-class App(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("EasyFact One - Sistema de Facturación")
-        self.geometry("1000x650")
-        self.configure(bg=COLOR_BG)
-        self.resizable(False, False)
-
-        self.title_font = tkfont.Font(family="Segoe UI", size=16, weight="bold")
-
-        container = ttk.Frame(self)
-        container.pack(fill="both", expand=True, padx=10, pady=10)
-
-        self.frames = {}
-        for F in (Login, Dashboard, RegisterInvoice, ConsultInvoices, RegisterClient, RegisterProduct):
-            page = F.__name__
-            frame = F(parent=container, controller=self)
-            self.frames[page] = frame
-            frame.grid(row=0, column=0, sticky="nsew")
-
-        self.show_frame("Login")
-
-    def show_frame(self, page):
-        self.frames[page].tkraise()
-
-
-# ------------------------ PANTALLAS ------------------------
-
 class Login(ttk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
@@ -221,12 +180,17 @@ class Dashboard(ttk.Frame):
 
         header = tk.Frame(self, bg=COLOR_HEADER, height=70)
         header.pack(fill="x")
-        lbl_logo = tk.Label(header, image=logo, bg=COLOR_HEADER)
-        lbl_logo.image = logo
-        lbl_logo.pack(side="left", padx=15)
 
-        ttk.Label(header, text="Panel Principal", foreground="white",
-                  background=COLOR_HEADER, font=controller.title_font).pack(padx=20, pady=12)
+        logo_frame = tk.Frame(header, bg=COLOR_HEADER)
+        logo_frame.pack(side="left", padx=20)
+
+        lbl_logo = tk.Label(logo_frame, image=controller.logo, bg=COLOR_HEADER)
+
+        lbl_logo.image = controller.logo
+        lbl_logo.pack()
+
+        ttk.Label(header, text="Menu Principal", foreground="white",
+                  background=COLOR_HEADER, font=("Segoe UI", 16, "bold")).pack(side="left", padx=20)
 
         body = tk.Frame(self, bg=COLOR_BG)
         body.pack(expand=True)
@@ -235,24 +199,30 @@ class Dashboard(ttk.Frame):
         cards.pack()
 
         self.card("Registrar factura", cards, 0, 0,
-                  lambda: controller.show_frame("RegisterInvoice"))
+        lambda: controller.show_frame("RegisterInvoice"),controller.icon_factura)
+
         self.card("Consultar facturas", cards, 0, 1,
-                  lambda: controller.show_frame("ConsultInvoices"))
+        lambda: controller.show_frame("ConsultInvoices"),controller.icon_consultar)
+
         self.card("Registrar cliente", cards, 1, 0,
-                  lambda: controller.show_frame("RegisterClient"))
+        lambda: controller.show_frame("RegisterClient"),controller.icon_cliente)
+
         self.card("Registrar producto", cards, 1, 1,
-                  lambda: controller.show_frame("RegisterProduct"))
+        lambda: controller.show_frame("RegisterProduct"),controller.icon_producto)
 
         ttk.Button(body, text="Cerrar sesión",
                    command=lambda: controller.show_frame("Login")).pack(pady=10)
 
-    def card(self, text, container, r, c, cmd):
+    def card(self, text, container, r, c, cmd,icon):
         frame = tk.Frame(container, bg=CARD_BG, width=420, height=150, bd=1, relief="raised")
         frame.grid(row=r, column=c, padx=12, pady=12)
         frame.grid_propagate(False)
 
+        
+        tk.Label(frame, image=icon, bg=CARD_BG).pack(pady=10)
         tk.Label(frame, text=text, bg=CARD_BG, fg=COLOR_TEXT,
-                 font=self.controller.title_font).pack(expand=True)
+             font=self.controller.title_font).pack()
+
         ttk.Button(frame, text="Abrir", command=cmd).pack(pady=8)
 
 
@@ -348,8 +318,13 @@ class ConsultInvoices(ttk.Frame):
 
         header = tk.Frame(self, bg=COLOR_HEADER, height=60)
         header.pack(fill="x")
-        ttk.Label(header, text="Consultar facturas", foreground="white",
-                  background=COLOR_HEADER, font=controller.title_font).pack(padx=20, pady=12)
+        ttk.Label(
+            header,
+            text="Consultar facturas",
+            foreground="white",
+            background=COLOR_HEADER,
+            font=controller.title_font
+        ).pack(padx=20, pady=12)
 
         body = ttk.Frame(self, padding=12)
         body.pack(fill="both", expand=True)
@@ -369,6 +344,13 @@ class ConsultInvoices(ttk.Frame):
             self.tree.column(c, width=200)
         self.tree.pack(fill="both", expand=True, pady=10)
 
+    
+        ttk.Button(
+            body,
+            text="Volver al menú",
+            command=lambda: controller.show_frame("Dashboard")
+        ).pack(pady=10)
+
         self.cargar_todo()
 
     def cargar_todo(self):
@@ -382,56 +364,53 @@ class ConsultInvoices(ttk.Frame):
         for r in fetch_invoices(text):
             self.tree.insert("", tk.END, values=r)
 
-
 class RegisterClient(ttk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
-        self.controller = controller
 
         header = tk.Frame(self, bg=COLOR_HEADER, height=60)
         header.pack(fill="x")
-        ttk.Label(header, text="Registrar cliente", foreground="white",
-                  background=COLOR_HEADER, font=controller.title_font).pack(padx=20, pady=12)
 
-        body = ttk.Frame(self, padding=12)
+        ttk.Label(
+            header,
+            text="Registrar Cliente",
+            foreground="white",
+            background=COLOR_HEADER,
+            font=controller.title_font
+        ).pack(padx=20, pady=12)
+
+        body = ttk.Frame(self, padding=20)
         body.pack(fill="both", expand=True)
 
-        labels = ["Nombre", "Documento", "Dirección", "Teléfono", "Correo"]
-        self.e = {}
+        labels = ["Nombre", "Documento", "Teléfono", "Correo"]
+        self.entries = {}
 
-        for i, lab in enumerate(labels):
-            ttk.Label(body, text=lab+":").grid(row=i, column=0, pady=6, sticky="w")
-            ent = ttk.Entry(body, width=50)
-            ent.grid(row=i, column=1, pady=6)
-            self.e[lab.lower()] = ent
+        for i, text in enumerate(labels):
+            ttk.Label(body, text=text + ":").grid(row=i, column=0, pady=8, sticky="w")
+            entry = ttk.Entry(body, width=40)
+            entry.grid(row=i, column=1, pady=8)
+            self.entries[text] = entry
 
         btns = ttk.Frame(body)
-        btns.grid(row=6, column=0, columnspan=2, pady=20)
-        ttk.Button(btns, text="Guardar", command=self.guardar).pack(side="left", padx=8)
-        ttk.Button(btns, text="Volver",
-                   command=lambda: controller.show_frame("Dashboard")).pack(side="left", padx=8)
+        btns.grid(row=len(labels), column=0, columnspan=2, pady=20)
 
-    def guardar(self):
-        nombre = self.e["nombre"].get()
+        ttk.Button(
+            btns,
+            text="Guardar",
+            command=self.guardar_cliente
+        ).pack(side="left", padx=10)
 
-        if not nombre:
-            messagebox.showerror("Error", "El nombre es obligatorio")
-            return
+        ttk.Button(
+            btns,
+            text="Volver al menú",
+            command=lambda: controller.show_frame("Dashboard")
+        ).pack(side="left", padx=10)
 
-        ok, err = insert_client(
-            self.e["nombre"].get(),
-            self.e["documento"].get(),
-            self.e["dirección"].get(),
-            self.e["teléfono"].get(),
-            self.e["correo"].get()
+    def guardar_cliente(self):
+        messagebox.showinfo(
+            "Prototipo",
+            "Cliente registrado correctamente"
         )
-
-        if ok:
-            messagebox.showinfo("Guardado", "Cliente registrado")
-            for x in self.e.values():
-                x.delete(0, tk.END)
-        else:
-            messagebox.showerror("Error", err)
 
 
 class RegisterProduct(ttk.Frame):
@@ -491,6 +470,53 @@ class RegisterProduct(ttk.Frame):
         else:
             messagebox.showerror("Error", err)
 
+
+
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        
+        self.icon_factura = ImageTk.PhotoImage(
+    Image.open("assets/icons/factura.png").resize((55, 55))
+        )
+        self.icon_consultar = ImageTk.PhotoImage(
+    Image.open("assets/icons/consultar.png").resize((55, 55))
+        )
+        self.icon_cliente = ImageTk.PhotoImage(
+    Image.open("assets/icons/cliente.png").resize((55, 55))
+        )
+        self.icon_producto = ImageTk.PhotoImage(
+    Image.open("assets/icons/producto.png").resize((55, 55))            
+        )
+
+        self.title("EasyFact One - Sistema de Facturación")
+        self.geometry("1000x650")
+        self.configure(bg=COLOR_BG)
+        self.resizable(False, False)
+        
+        LOGO_PATH = os.path.join("assets", "icons", "logo.png")
+        self.logo_img = Image.open(LOGO_PATH).resize((70, 70),Image.LANCZOS)
+        self.logo = ImageTk.PhotoImage(self.logo_img)
+        
+        logo_frame = tk.Frame(bg=COLOR_HEADER)
+        logo_frame.pack(side="left", padx=20)
+
+        self.title_font = tkfont.Font(family="Segoe UI", size=16, weight="bold")
+
+        container = ttk.Frame(self)
+        container.pack(fill="both", expand=True, padx=10, pady=10)
+
+        self.frames = {}
+        for F in (Login, Dashboard, RegisterInvoice, ConsultInvoices, RegisterClient, RegisterProduct):
+            page = F.__name__
+            frame = F(parent=container, controller=self)
+            self.frames[page] = frame
+            frame.grid(row=0, column=0, sticky="nsew")
+
+        self.show_frame("Login")
+
+    def show_frame(self, page):
+        self.frames[page].tkraise()
 
 if __name__ == "__main__":
     app = App()
